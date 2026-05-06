@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f0e8;
+    --surface: #fefcf7;
+    --ink: #1a1208;
+    --muted: #8a7e6a;
+    --accent: #e8500a;
+    --accent2: #2d6a4f;
+    --accent3: #5c4b9e;
+    --border: #d4c9b0;
+    --tab-h: 52px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 24px 16px 40px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    line-height: 1;
+  }
+
+  header h1 span { color: var(--accent); }
+
+  header p {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 6px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 0;
+  }
+
+  .tab-btn {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 14px 24px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+  }
+
+  .tab-btn:hover { color: var(--ink); }
+
+  .tab-btn.active {
+    color: var(--ink);
+  }
+
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+
+  .tab-btn[data-tab="todos"].active::after { background: var(--accent2); }
+  .tab-btn[data-tab="notes"].active::after { background: var(--accent3); }
+
+  /* PANELS */
+  .tab-panel {
+    display: none;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 28px;
+    animation: fadeIn 0.18s ease;
+  }
+
+  .tab-panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== CALENDAR ===== */
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .cal-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .cal-nav {
+    display: flex;
+    gap: 8px;
+  }
+
+  .cal-nav button {
+    width: 34px; height: 34px;
+    border: 2px solid var(--border);
+    background: var(--bg);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .cal-nav button:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .cal-day-name {
+    text-align: center;
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 0 10px;
+  }
+
+  .cal-cell {
+    aspect-ratio: 1;
+    border: 1.5px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 6px 4px 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: background 0.12s, border-color 0.12s;
+    position: relative;
+    min-height: 52px;
+    gap: 3px;
+  }
+
+  .cal-cell:hover { background: var(--bg); border-color: var(--border); }
+  .cal-cell.empty { cursor: default; }
+  .cal-cell.empty:hover { background: transparent; border-color: transparent; }
+
+  .cal-cell.today {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .cal-cell.has-events .event-dot {
+    display: block;
+  }
+
+  .event-dot {
+    display: none;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent2);
+    margin-top: 2px;
+  }
+
+  .cal-cell.today .event-dot { background: rgba(255,255,255,0.8); }
+
+  .cal-cell.selected {
+    border-color: var(--accent);
+    background: #fff0eb;
+  }
+
+  .cal-cell.today.selected {
+    background: var(--accent);
+  }
+
+  /* Event panel */
+  .event-panel {
+    margin-top: 20px;
+    padding: 18px;
+    background: var(--bg);
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+  }
+
+  .event-panel h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--accent);
+  }
+
+  .event-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .event-input-row input {
+    flex: 1;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .event-input-row input:focus { border-color: var(--accent); }
+
+  .btn {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 9px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn:active { transform: scale(0.97); }
+  .btn-red { background: var(--accent); color: #fff; }
+  .btn-green { background: var(--accent2); color: #fff; }
+  .btn-purple { background: var(--accent3); color: #fff; }
+
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .event-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--surface);
+    border-radius: 6px;
+    border-left: 3px solid var(--accent);
+    font-size: 0.8rem;
+    animation: slideIn 0.15s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .event-item button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.15s;
+  }
+
+  .event-item button:hover { color: var(--accent); }
+
+  .no-events {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-style: italic;
+  }
+
+  /* ===== TO-DO ===== */
+  .todo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .todo-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .todo-filters {
+    display: flex;
+    gap: 6px;
+  }
+
+  .filter-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 5px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn.active, .filter-btn:hover {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: #fff;
+  }
+
+  .todo-add-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .todo-add-row input, .todo-add-row select {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .todo-add-row input:focus, .todo-add-row select:focus { border-color: var(--accent2); }
+  .todo-add-row input { flex: 1; min-width: 160px; }
+
+  .todo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .todo-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    transition: opacity 0.2s;
+    animation: slideIn 0.15s ease;
+  }
+
+  .todo-item.done {
+    opacity: 0.5;
+  }
+
+  .todo-item.done .todo-text {
+    text-decoration: line-through;
+  }
+
+  .todo-check {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    appearance: none;
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .todo-check:checked {
+    background: var(--accent2);
+    border-color: var(--accent2);
+  }
+
+  .todo-check:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+  }
+
+  .todo-text {
+    flex: 1;
+    font-size: 0.83rem;
+  }
+
+  .todo-badge {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .badge-hw    { background: #fde68a; color: #78350f; }
+  .badge-study { background: #bfdbfe; color: #1e3a5f; }
+  .badge-other { background: #e9d5ff; color: #4c1d95; }
+  .badge-exam  { background: #fecaca; color: #7f1d1d; }
+
+  .todo-delete {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1rem;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .todo-delete:hover { color: var(--accent); }
+
+  .empty-state {
+    text-align: center;
+    padding: 36px 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+  /* ===== NOTES ===== */
+  .notes-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 16px;
+    min-height: 420px;
+  }
+
+  @media (max-width: 560px) {
+    .notes-layout { grid-template-columns: 1fr; }
+    .notes-sidebar { display: flex; flex-wrap: wrap; gap: 6px; }
+  }
+
+  .notes-sidebar {
+    border-right: 1.5px solid var(--border);
+    padding-right: 16px;
+  }
+
+  .notes-sidebar h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .note-tab {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 9px 12px;
+    margin-bottom: 4px;
+    border: 1.5px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+    color: var(--ink);
+    transition: all 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .note-tab:hover { background: var(--bg); }
+  .note-tab.active { background: var(--accent3); color: #fff; border-color: var(--accent3); }
+
+  .new-note-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 9px 12px;
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+    background: transparent;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+    color: var(--muted);
+    margin-top: 8px;
+    transition: all 0.15s;
+  }
+
+  .new-note-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  .notes-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .note-title-input {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border: none;
+    border-bottom: 2px solid var(--border);
+    background: transparent;
+    color: var(--ink);
+    padding: 4px 0 8px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+
+  .note-title-input:focus { border-color: var(--accent3); }
+
+  .note-body {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 14px;
+    resize: none;
+    outline: none;
+    flex: 1;
+    min-height: 300px;
+    transition: border-color 0.15s;
+  }
+
+  .note-body:focus { border-color: var(--accent3); }
+
+  .note-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .note-actions button {
+    font-size: 0.72rem;
+  }
+
+  .no-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-align: center;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .progress-bar-wrap {
+    margin-top: 10px;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .progress-bar {
+    height: 5px;
+    background: var(--border);
+    border-radius: 10px;
+    margin-top: 5px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent2);
+    border-radius: 10px;
+    transition: width 0.3s;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Study<span>Desk</span></h1>
+    <p>Your personal student planner</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="calendar">📅 Calendar</button>
+    <button class="tab-btn" data-tab="todos">✅ To-Do List</button>
+    <button class="tab-btn" data-tab="notes">📝 Notes</button>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="tab-panel active" id="panel-calendar">
+    <div class="cal-header">
+      <div class="cal-nav">
+        <button id="prevMonth">‹</button>
+        <button id="nextMonth">›</button>
+      </div>
+      <h2 id="calTitle"></h2>
+      <button class="btn btn-red" onclick="goToday()">Today</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+
+    <div class="event-panel">
+      <h3 id="eventPanelTitle">Select a day to add events</h3>
+      <div class="event-input-row" id="eventInputRow" style="display:none">
+        <input type="text" id="eventInput" placeholder="Add an event or class..." />
+        <button class="btn btn-red" onclick="addEvent()">Add</button>
+      </div>
+      <div class="event-list" id="eventList">
+        <p class="no-events">Click a date to see or add events.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TO-DO -->
+  <div class="tab-panel" id="panel-todos">
+    <div class="todo-header">
+      <h2>Tasks</h2>
+      <div class="todo-filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="active">Active</button>
+        <button class="filter-btn" data-filter="done">Done</button>
+      </div>
+    </div>
+    <div class="todo-add-row">
+      <input type="text" id="todoInput" placeholder="Add a task, homework, or deadline..." />
+      <select id="todoCategory">
+        <option value="hw">Homework</option>
+        <option value="study">Study</option>
+        <option value="exam">Exam</option>
+        <option value="other">Other</option>
+      </select>
+      <button class="btn btn-green" onclick="addTodo()">Add</button>
+    </div>
+    <div class="progress-bar-wrap">
+      <span id="progressLabel">0 of 0 done</span>
+      <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <br>
+    <div class="todo-list" id="todoList"></div>
+  </div>
+
+  <!-- NOTES -->
+  <div class="tab-panel" id="panel-notes">
+    <div class="notes-layout">
+      <div class="notes-sidebar">
+        <h3>My Notes</h3>
+        <div id="noteTabList"></div>
+        <button class="new-note-btn" onclick="newNote()">+ New Note</button>
+      </div>
+      <div class="notes-editor" id="notesEditor">
+        <div class="no-note">
+          <div style="font-size:2rem">📄</div>
+          <div>Select a note or create a new one</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ TAB SWITCHING ============
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ============ CALENDAR ============
+let calDate = new Date();
+let selectedDate = null;
+let events = JSON.parse(localStorage.getItem('sd_events') || '{}');
+
+function saveEvents() { localStorage.setItem('sd_events', JSON.stringify(events)); }
+
+function dateKey(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+
+function renderCalendar() {
+  const y = calDate.getFullYear(), m = calDate.getMonth();
+  document.getElementById('calTitle').textContent =
+    new Date(y, m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const today = new Date();
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-day-name';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  for (let i = 0; i < firstDay; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-cell empty';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = dateKey(y, m, d);
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    cell.innerHTML = `${d}<span class="event-dot"></span>`;
+
+    if (today.getFullYear() === y && today.getMonth() === m && today.getDate() === d)
+      cell.classList.add('today');
+
+    if (events[key] && events[key].length > 0)
+      cell.classList.add('has-events');
+
+    if (selectedDate === key) cell.classList.add('selected');
+
+    cell.addEventListener('click', () => selectDate(y, m, d));
+    grid.appendChild(cell);
+  }
+}
+
+function selectDate(y, m, d) {
+  selectedDate = dateKey(y, m, d);
+  renderCalendar();
+  const label = new Date(y, m, d).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  document.getElementById('eventPanelTitle').textContent = `Events for ${label}`;
+  document.getElementById('eventInputRow').style.display = 'flex';
+  renderEventList();
+}
+
+function renderEventList() {
+  const list = document.getElementById('eventList');
+  const evs = (events[selectedDate] || []);
+  if (evs.length === 0) {
+    list.innerHTML = '<p class="no-events">No events — add one above!</p>';
+    return;
+  }
+  list.innerHTML = evs.map((e, i) =>
+    `<div class="event-item">
+      <span>${e}</span>
+      <button onclick="deleteEvent(${i})" title="Remove">×</button>
+    </div>`
+  ).join('');
+}
+
+function addEvent() {
+  const input = document.getElementById('eventInput');
+  const val = input.value.trim();
+  if (!val || !selectedDate) return;
+  if (!events[selectedDate]) events[selectedDate] = [];
+  events[selectedDate].push(val);
+  input.value = '';
+  saveEvents();
+  renderCalendar();
+  renderEventList();
+}
+
+function deleteEvent(i) {
+  events[selectedDate].splice(i, 1);
+  saveEvents();
+  renderCalendar();
+  renderEventList();
+}
+
+function goToday() {
+  calDate = new Date();
+  renderCalendar();
+}
+
+document.getElementById('prevMonth').onclick = () => { calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); };
+document.getElementById('nextMonth').onclick = () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); };
+document.getElementById('eventInput').addEventListener('keydown', e => { if (e.key === 'Enter') addEvent(); });
+
+renderCalendar();
+
+// ============ TO-DO ============
+let todos = JSON.parse(localStorage.getItem('sd_todos') || '[]');
+let todoFilter = 'all';
+
+function saveTodos() { localStorage.setItem('sd_todos', JSON.stringify(todos)); }
+
+const catLabels = { hw: 'Homework', study: 'Study', exam: 'Exam', other: 'Other' };
+const catClass  = { hw: 'badge-hw', study: 'badge-study', exam: 'badge-exam', other: 'badge-other' };
+
+function renderTodos() {
+  const list = document.getElementById('todoList');
+  const filtered = todos.filter(t =>
+    todoFilter === 'all' ? true : todoFilter === 'done' ? t.done : !t.done
+  );
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🎉</div><div>${todoFilter === 'done' ? 'No completed tasks yet.' : 'No tasks here!'}</div></div>`;
+  } else {
+    list.innerHTML = filtered.map((t, fi) => {
+      const i = todos.indexOf(t);
+      return `<div class="todo-item ${t.done ? 'done' : ''}">
+        <input type="checkbox" class="todo-check" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})">
+        <span class="todo-text">${escHtml(t.text)}</span>
+        <span class="todo-badge ${catClass[t.cat]}">${catLabels[t.cat]}</span>
+        <button class="todo-delete" onclick="deleteTodo(${i})">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  const done = todos.filter(t => t.done).length;
+  const total = todos.length;
+  document.getElementById('progressLabel').textContent = `${done} of ${total} done`;
+  document.getElementById('progressFill').style.width = total ? `${(done/total)*100}%` : '0%';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addTodo() {
+  const input = document.getElementById('todoInput');
+  const cat = document.getElementById('todoCategory').value;
+  const val = input.value.trim();
+  if (!val) return;
+  todos.unshift({ text: val, cat, done: false, id: Date.now() });
+  input.value = '';
+  saveTodos();
+  renderTodos();
+}
+
+function toggleTodo(i) {
+  todos[i].done = !todos[i].done;
+  saveTodos();
+  renderTodos();
+}
+
+function deleteTodo(i) {
+  todos.splice(i, 1);
+  saveTodos();
+  renderTodos();
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    todoFilter = btn.dataset.filter;
+    renderTodos();
+  });
+});
+
+document.getElementById('todoInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+
+renderTodos();
+
+// ============ NOTES ============
+let notes = JSON.parse(localStorage.getItem('sd_notes') || '[]');
+let activeNoteId = null;
+
+function saveNotes() { localStorage.setItem('sd_notes', JSON.stringify(notes)); }
+
+function renderNoteSidebar() {
+  const list = document.getElementById('noteTabList');
+  if (notes.length === 0) {
+    list.innerHTML = '<p style="font-size:0.72rem;color:var(--muted)">No notes yet.</p>';
+    return;
+  }
+  list.innerHTML = notes.map(n =>
+    `<button class="note-tab ${n.id === activeNoteId ? 'active' : ''}" onclick="openNote(${n.id})">
+      ${escHtml(n.title || 'Untitled')}
+    </button>`
+  ).join('');
+}
+
+function openNote(id) {
+  activeNoteId = id;
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  renderNoteSidebar();
+  document.getElementById('notesEditor').innerHTML = `
+    <input class="note-title-input" id="noteTitleInput" value="${escHtml(note.title)}" placeholder="Note title..." oninput="updateNoteTitle(this.value)">
+    <textarea class="note-body" id="noteBody" placeholder="Start writing...">${escHtml(note.body)}</textarea>
+    <div class="note-actions">
+      <button class="btn btn-red" onclick="deleteNote(${id})">Delete Note</button>
+      <button class="btn btn-purple" onclick="saveCurrentNote()">Save</button>
+    </div>
+  `;
+  document.getElementById('noteBody').addEventListener('input', e => {
+    const n = notes.find(x => x.id === activeNoteId);
+    if (n) n.body = e.target.value;
+  });
+}
+
+function updateNoteTitle(val) {
+  const n = notes.find(x => x.id === activeNoteId);
+  if (n) { n.title = val; renderNoteSidebar(); }
+}
+
+function saveCurrentNote() {
+  saveNotes();
+  // flash feedback
+  const btn = document.querySelector('.note-actions .btn-purple');
+  if (btn) { btn.textContent = 'Saved!'; setTimeout(() => btn.textContent = 'Save', 1200); }
+}
+
+function newNote() {
+  const note = { id: Date.now(), title: 'New Note', body: '' };
+  notes.unshift(note);
+  saveNotes();
+  openNote(note.id);
+}
+
+function deleteNote(id) {
+  notes = notes.filter(n => n.id !== id);
+  activeNoteId = null;
+  saveNotes();
+  renderNoteSidebar();
+  document.getElementById('notesEditor').innerHTML = `<div class="no-note"><div style="font-size:2rem">📄</div><div>Select a note or create a new one</div></div>`;
+}
+
+renderNoteSidebar();
+</script>
+</body>
+</html>
